@@ -49,10 +49,9 @@ for (i = 0; i < board_width * board_height; i += 1) {
     mat_index = 1 - mat_index;
 }
 
-cube = cubes[47];
-cube.material = red_mat;
-cube.position.y += 1;
-
+// cube = cubes[47];
+// cube.material = red_mat;
+// cube.position.y += 1;
 
 
 
@@ -61,13 +60,66 @@ camera.position.z = 5 * Math.max(board_width, board_height) / 4;
 
 // game logic
 var update = function() {
+    var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+    vector.unproject(camera);
+    var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+    var intersects = ray.intersectObjects(eventCubesList.children, true);
+    if (intersects.length > 0) {
+
+        $('html,body').css('cursor', 'pointer');
+        if (intersects[0].object != INTERSECTED) {                       
+
+            if (highlightedTile) {
+                
+            }
+                unhighlightTile(highlightedTile);
+
+            INTERSECTED = intersects[0].object;
+            var timestamp = INTERSECTED.userData;
+
+            var selectedRow = getSelectedRow(timestamp);
+            highlightedRow = selectedRow;
+            highlightRow(selectedRow);
+
+        }
+        else {
+            if (INTERSECTED) {
+                if (highlightedRow) {
+                    var timestamp = INTERSECTED.userData;
+                    var row = getSelectedRow(timestamp);
+                    unhighlightRow(row);
+                }
+                highlightedRow = null;
+
+            }
+
+
+            INTERSECTED = null;
+        }
+    }
+    else
+    {
+            $('html,body').css('cursor', 'default');
+    }
 
 };
 
 // draw scene
 var render = function() {
     renderer.render(scene, camera);
+    update();
 };
+
+function onDocumentMouseMove ( event ) {
+
+    event.preventDefault();
+    
+    mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
+    mouse.y = -( event.clientY / renderer.domElement.height ) * 2 + 1;
+    
+    render();
+}
 
 // run game loop (update, render, repeat)
 var GameLoop = function() {
