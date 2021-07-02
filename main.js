@@ -59,56 +59,56 @@ for (i = 0; i < board_width * board_height; i += 1) {
 camera.position.z = 5 * Math.max(board_width, board_height) / 4;
 
 // game logic
-var update = function() {
-    var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
-    vector.unproject(camera);
-    var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+// var update = function() {
+//     var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+//     vector.unproject(camera);
+//     var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
-    var intersects = ray.intersectObjects(eventCubesList.children, true);
-    if (intersects.length > 0) {
+//     var intersects = ray.intersectObjects(eventCubesList.children, true);
+//     if (intersects.length > 0) {
 
-        $('html,body').css('cursor', 'pointer');
-        if (intersects[0].object != INTERSECTED) {                       
+//         $('html,body').css('cursor', 'pointer');
+//         if (intersects[0].object != INTERSECTED) {                       
 
-            if (highlightedTile) {
+//             if (highlightedTile) {
                 
-            }
-                unhighlightTile(highlightedTile);
+//             }
+//                 unhighlightTile(highlightedTile);
 
-            INTERSECTED = intersects[0].object;
-            var timestamp = INTERSECTED.userData;
+//             INTERSECTED = intersects[0].object;
+//             var timestamp = INTERSECTED.userData;
 
-            var selectedRow = getSelectedRow(timestamp);
-            highlightedRow = selectedRow;
-            highlightRow(selectedRow);
+//             var selectedRow = getSelectedRow(timestamp);
+//             highlightedRow = selectedRow;
+//             highlightRow(selectedRow);
 
-        }
-        else {
-            if (INTERSECTED) {
-                if (highlightedRow) {
-                    var timestamp = INTERSECTED.userData;
-                    var row = getSelectedRow(timestamp);
-                    unhighlightRow(row);
-                }
-                highlightedRow = null;
+//         }
+//         else {
+//             if (INTERSECTED) {
+//                 if (highlightedRow) {
+//                     var timestamp = INTERSECTED.userData;
+//                     var row = getSelectedRow(timestamp);
+//                     unhighlightRow(row);
+//                 }
+//                 highlightedRow = null;
 
-            }
+//             }
 
 
-            INTERSECTED = null;
-        }
-    }
-    else
-    {
-            $('html,body').css('cursor', 'default');
-    }
+//             INTERSECTED = null;
+//         }
+//     }
+//     else
+//     {
+//             $('html,body').css('cursor', 'default');
+//     }
 
-};
+// };
 
 // draw scene
 var render = function() {
     renderer.render(scene, camera);
-    update();
+    // update();
 };
 
 function onDocumentMouseMove ( event ) {
@@ -124,7 +124,7 @@ function onDocumentMouseMove ( event ) {
 // run game loop (update, render, repeat)
 var GameLoop = function() {
     requestAnimationFrame(GameLoop);
-    update();
+    // update();
     render();
 };
 
