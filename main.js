@@ -4,12 +4,17 @@
 // =================================================
 // =============== Define Constants ================
 
-const board_width = 20;
-const board_height = 20;
+const board_width = 3;
+const board_height = 3;
 const cube_width = 1;
 
 const cylinder_geometry = new THREE.CylinderGeometry(board_width * 0.8, board_width, 5, 32 );
 const box_geometry = new THREE.BoxGeometry(cube_width, 3, cube_width);
+const water_geometry = new THREE.SphereGeometry(board_width * 60, 20, 20);
+const waves_geometry = new THREE.SphereGeometry(board_width * 60, 21, 21);
+const skybox_geometry = new THREE.CylinderGeometry(board_width * 47, board_width * 47, 1000, 32 );
+const pirate_geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
+const treasure_geometry = new THREE.SphereGeometry(0.5, 16, 16);
 
 const tan_mat = new THREE.MeshBasicMaterial( { color: 0xd2b48c, wireframe: false} );
 const brown_mat = new THREE.MeshBasicMaterial( { color: 0xad8261, wireframe: false} );
@@ -18,12 +23,19 @@ const dark_red_mat = new THREE.MeshBasicMaterial( { color: 0xc90000, wireframe: 
 const green_mat = new THREE.MeshBasicMaterial( { color: 0x047027, wireframe: false} );
 const lwall_mat = new THREE.MeshBasicMaterial( { color: 0x3d4057, wireframe: false} );
 const dwall_mat = new THREE.MeshBasicMaterial( { color: 0x2d3042, wireframe: false} );
+const water_mat = new THREE.MeshBasicMaterial( { color: 0x0d0233, wireframe: false} );
+const waves_mat = new THREE.MeshBasicMaterial( { color: 0x041d5c, wireframe: false} );
+const skybox_mat = new THREE.MeshBasicMaterial( { color: 0x360404, wireframe: false} );
+const test_mat = new THREE.MeshBasicMaterial( { color: 0xffffff, wireframe: true} );
 const materials = [tan_mat, brown_mat];
 
 const CUBE_Y_DEFAULT = -3.5;
 const CUBE_Y_SELECTED = CUBE_Y_DEFAULT + 0.2;
 const CUBE_Y_CLICKED = CUBE_Y_DEFAULT + 1;
 const CUBE_Y_CSELECTED = CUBE_Y_CLICKED + 0.2;
+const AGENT_DEFAULT = CUBE_Y_DEFAULT + 2;
+const AGENT_SELECTED = AGENT_DEFAULT + 0.2;
+const AGENT_PLUCKED = AGENT_DEFAULT + 1
 
 const mouse = new THREE.Vector2();
 mouse.x = Infinity;
@@ -31,7 +43,7 @@ mouse.y = Infinity;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer(antialias = false);
+const renderer = new THREE.WebGLRenderer(antialias = true);
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 const raycaster = new THREE.Raycaster();
 
@@ -83,6 +95,7 @@ camera.position.z = 5 * Math.max(board_width, board_height) / 4;
 let i;
 let cube;
 let cubes = [];
+let gameState = [];
 let cube_tuples = [];
 let mat_index = 1;
 
@@ -97,94 +110,171 @@ for (i = 0; i < board_width * board_height; i += 1) {
 
     scene.add(cube);
     cubes.push(cube);
+    // gamestate
+    //   0 = path
+    //   1 = wall
+    //   2 = pirate
+    //   3 = treasure
+    gameState.push(0);
     // cube_tuple = (default_material, isClicked)
     cube_tuple = (materials[mat_index], false);
     cube_tuples.push(cube_tuple);
     mat_index = 1 - mat_index;
 }
 
+// Set up Pirate
+// island
+let pirate = new THREE.Mesh(pirate_geometry, green_mat);
+pirate.position.x = -(board_width/2) + (cube_width / 2);
+pirate.position.z = (board_height/2) - (cube_width / 2);
+pirate.position.y = AGENT_DEFAULT;
+scene.add(pirate);
+gameState[0] = 2;
+
+// Set up Treasure
+let treasure = new THREE.Mesh(treasure_geometry, green_mat);
+treasure.position.x = (board_width - 1) - (board_width/2) + (cube_width / 2);;
+treasure.position.z = -(board_width - 1) + (board_height/2) - (cube_width / 2);
+treasure.position.y = AGENT_DEFAULT;
+scene.add(treasure);
+gameState[board_width * board_width - 1] = 3
+
+
 
 // =================================================
 // ============ Initialize Decorations =============
 
-mountaintop = new THREE.Mesh(cylinder_geometry, green_mat);
-mountaintop.position.x = 0
-mountaintop.position.z = 0
+// island
+let mountaintop = new THREE.Mesh(cylinder_geometry, green_mat);
+mountaintop.position.x = 0;
+mountaintop.position.z = 0;
 mountaintop.position.y = CUBE_Y_DEFAULT - 2;
 scene.add(mountaintop);
 
+// water
+let water = new THREE.Mesh(water_geometry, water_mat);
+water.position.x = 0
+water.position.z = 0
+water.position.y = CUBE_Y_DEFAULT - board_height * 60;
+water.rotation.x = 3 * Math.PI / 2;
+scene.add(water);
+
+let twater = new THREE.Mesh(waves_geometry, waves_mat);
+twater.position.x = 0
+twater.position.z = 0
+twater.position.y = CUBE_Y_DEFAULT - board_height * 60;
+twater.rotation.x = 2 * Math.PI / 2;
+scene.add(twater);
+
+// sky
+skybox_mat.side = THREE.BackSide;
+let sky = new THREE.Mesh(skybox_geometry, skybox_mat);
+sky.position.x = 0
+sky.position.z = 0
+sky.position.y = CUBE_Y_DEFAULT - 2;
+scene.add(sky);
 
 // =================================================
 // =================================================
 
 
-let selected_cube = null;
+let selected = null;
 let last_mat;
+let time = 0;
+let mode = "Editing Walls";
+
 // game logic
 var update = function() {
-    let cameraPos = camera.position;
-    controls.update();
 
+    // Update details
+    controls.update();
+    twater.rotation.x = time + 0.1;
+    water.rotation.x = time;
+    time += 0.0001;
+
+    // find intersected object
     let vector = new THREE.Vector3(mouse.x, mouse.y, 1);
     vector.unproject(camera);
     let ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-    let intersects = ray.intersectObjects(scene.children, true);
+    var intersects = ray.intersectObjects(scene.children, true);
 
-    if (intersects.length > 0 && cameraPos == camera.position) {
-        // make the cursor a pointer
-        $('html,body').css('cursor', 'pointer');
+    switch (mode) {
+        case "Editing Walls":
+            handleEditingWalls(intersects);
+            break;
+        case "Moving Pirate":
+            break;
+        case "Moving Treasure":
+            break;
+    }
+}
 
-        if (selected_cube != null) {
-            let cube_index = (selected_cube.position.x) + selected_cube.position.z * board_width;
+function handleEditingWalls(intersects) {
+    if (intersects.length > 0) {
+        // make the cursor a pointer if the object is interactable
+        console.log(intersects)
+        if (intersects[0].geometry == box_geometry || intersects[0].geometry == pirate_geometry || intersects[0].geometry == treasure_geometry) {
+            $('html,body').css('cursor', 'pointer');
+        } else {
+            $('html,body').css('cursor', 'default');
+        }
+
+        if (selected != null && selected.geometry == box_geometry) {
+            let cube_index = (selected.position.x + (board_width/2) - (cube_width/2)) + (selected.position.z - (board_height/2) + (cube_width/2)) * -board_width;
             console.log(cube_index);
         }
 
         // If the selected cube is different than the last one
-        if (intersects[0].object != selected_cube) {
-            // revert changes to old selected_cube if it has not been clicked
-            if (selected_cube != null) {
-                selected_cube.material = last_mat;
-                if (selected_cube.position.y == CUBE_Y_SELECTED) {
-                    selected_cube.position.y = CUBE_Y_DEFAULT;
-                } else if (selected_cube.position.y == CUBE_Y_CSELECTED) {
-                    selected_cube.position.y = CUBE_Y_CLICKED;
+        if (intersects[0].object != selected) {
+            // revert changes to old selected if it has not been clicked
+            if (selected != null) {
+                selected.material = last_mat;
+                if (selected.position.y == CUBE_Y_SELECTED) {
+                    selected.position.y = CUBE_Y_DEFAULT;
+                } else if (selected.position.y == CUBE_Y_CSELECTED) {
+                    selected.position.y = CUBE_Y_CLICKED;
+                } else if (selected.position.y == AGENT_SELECTED) {
+                    selected.position.y = AGENT_DEFAULT;
                 }
             }
 
-            // store properties of new selected_cube
-            selected_cube = intersects[0].object;
-            last_mat = selected_cube.material;
+            // store properties of new selected
+            selected = intersects[0].object;
+            last_mat = selected.material;
 
-            // make changes to new selected_cube
-            if (selected_cube.geometry == box_geometry) {
-                if (selected_cube.material == tan_mat || selected_cube.material == lwall_mat) {
-                    selected_cube.material = light_red_mat;
+            // make changes to new selected
+            if (selected.geometry == box_geometry) {
+                if (selected.material == tan_mat || selected.material == lwall_mat) {
+                    selected.material = light_red_mat;
                 } else {
-                    selected_cube.material = dark_red_mat;
+                    selected.material = dark_red_mat;
                 }
+            } else if (selected.geometry == pirate_geometry || selected.geometry == treasure_geometry) {
+                selected.material = dark_red_mat;
             }
-            if (selected_cube.position.y == CUBE_Y_DEFAULT) {
-                selected_cube.position.y = CUBE_Y_SELECTED;
-            } else if (selected_cube.position.y == CUBE_Y_CLICKED) {
-                selected_cube.position.y = CUBE_Y_CSELECTED;
+            if (selected.position.y == CUBE_Y_DEFAULT) {
+                selected.position.y = CUBE_Y_SELECTED;
+            } else if (selected.position.y == CUBE_Y_CLICKED) {
+                selected.position.y = CUBE_Y_CSELECTED;
+            } else if (selected.position.y == AGENT_DEFAULT) {
+                selected.position.y = AGENT_SELECTED;
             }
         }
     } else {
         // make the cursor the user default
-        $('html,body').css('cursor', 'default');
 
         // revert changes to old selected cube
-        if (selected_cube != null) {
-            selected_cube.material = last_mat;
-            if (selected_cube.position.y == CUBE_Y_SELECTED) {
-                selected_cube.position.y = CUBE_Y_DEFAULT;
-            } else if (selected_cube.position.y == CUBE_Y_CSELECTED) {
-                selected_cube.position.y = CUBE_Y_CLICKED;
+        if (selected != null) {
+            selected.material = last_mat;
+            if (selected.position.y == CUBE_Y_SELECTED) {
+                selected.position.y = CUBE_Y_DEFAULT;
+            } else if (selected.position.y == CUBE_Y_CSELECTED) {
+                selected.position.y = CUBE_Y_CLICKED;
             }
         }
 
-        // set selected_cube to null
-        selected_cube = null;
+        // set selected to null
+        selected = null;
     }
 }
 
@@ -206,29 +296,71 @@ function onDocumentMouseMove ( event ) {
 // ==================================================
 // ================== Click Event) ==================
 
-function onDocumentClick( event ) {
+function onDocumentClick(event) {
     event.preventDefault();
-    if (controls.autoRotate) {
-        controls.autoRotate = false;
+    if (controls.autoRotate) controls.autoRotate = false;
+
+    let cube_index = (selected.position.x + (board_width/2) - (cube_width/2)) + (selected.position.z - (board_height/2) + (cube_width/2)) * -board_width;
+    switch (selected.geometry) {
+        case box_geometry:
+            clickCube(cube_index);
+            break;
+        case pirate_geometry:
+            clickPirate(cube_index);
+            break;
+        case treasure_geometry:
+            clickTreasure(cube_index);
+            break;
     }
-    if (selected_cube == null) return;
-    if (selected_cube.position.y == CUBE_Y_SELECTED) {
-        selected_cube.position.y = CUBE_Y_CSELECTED;
-        console.log(last_mat);
-        if (last_mat == brown_mat) {
-            last_mat = dwall_mat;
-        } else if (last_mat == tan_mat) {
-            last_mat = lwall_mat;
-        }
-    } else if (selected_cube.position.y == CUBE_Y_CSELECTED) {
-        selected_cube.position.y = CUBE_Y_SELECTED;
-        console.log(last_mat);
-        if (last_mat == dwall_mat) {
-            last_mat = brown_mat;
-        } else if (last_mat == lwall_mat) {
-            last_mat = tan_mat;
-        }
+    console.log(gameState);
+}
+
+function clickCube(cube_index) {
+    switch(gameState[cube_index]) {
+        // Path
+        case 0:
+            selected.position.y = CUBE_Y_CSELECTED;
+            if (last_mat == brown_mat) {
+                last_mat = dwall_mat;
+                gameState[cube_index] = 1;
+            } else if (last_mat == tan_mat) {
+                last_mat = lwall_mat;
+                gameState[cube_index] = 1;
+            }
+            break;
+        
+        // Wall
+        case 1:
+            selected.position.y = CUBE_Y_SELECTED;
+            if (last_mat == dwall_mat) {
+                last_mat = brown_mat;
+                gameState[cube_index] = 0;
+            } else if (last_mat == lwall_mat) {
+                last_mat = tan_mat;
+                gameState[cube_index] = 0;
+            }
+            break;
+        
+        // Pirate
+        case 2:
+            console.log("You cannot construct a wall on the Pirate")
+            break;
+        
+        // Treasure
+        case 3:
+            console.log("You cannot construct a wall on the Treasure")
+            break;
     }
+}
+
+function clickPirate(cube_index) {
+    mode = "Moving Pirate";
+    selected.position.y = AGENT_PLUCKED;
+}
+
+function clickTreasure(cube_index) {
+    mode = "Moving Treasure";
+    selected.position.y = AGENT_PLUCKED;
 }
 
 
