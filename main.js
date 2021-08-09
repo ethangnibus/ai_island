@@ -4,8 +4,8 @@
 // =================================================
 // =============== Define Constants ================
 
-const board_width = 3;
-const board_height = 3;
+const board_width = 10;
+const board_height = 10;
 const cube_width = 1;
 
 const cylinder_geometry = new THREE.CylinderGeometry(board_width * 0.8, board_width, 5, 32 );
@@ -16,10 +16,12 @@ const skybox_geometry = new THREE.CylinderGeometry(board_width * 47, board_width
 const pirate_geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
 const treasure_geometry = new THREE.SphereGeometry(0.5, 16, 16);
 
+
 const tan_mat = new THREE.MeshBasicMaterial( { color: 0xd2b48c, wireframe: false} );
 const brown_mat = new THREE.MeshBasicMaterial( { color: 0xad8261, wireframe: false} );
 const light_red_mat = new THREE.MeshBasicMaterial( { color: 0xe80000, wireframe: false} );
 const dark_red_mat = new THREE.MeshBasicMaterial( { color: 0xc90000, wireframe: false} );
+const teal_mat = new THREE.MeshBasicMaterial( { color: 0x34ebe1, wireframe: false} );
 const green_mat = new THREE.MeshBasicMaterial( { color: 0x047027, wireframe: false} );
 const lwall_mat = new THREE.MeshBasicMaterial( { color: 0x3d4057, wireframe: false} );
 const dwall_mat = new THREE.MeshBasicMaterial( { color: 0x2d3042, wireframe: false} );
@@ -76,7 +78,7 @@ controls.minDistance = board_width;
 controls.maxDistance = board_width * 5;
 controls.maxPolarAngle = Math.PI/2;
 controls.enablePan = false;
-controls.enableDamping = true;   //damping 
+controls.enableDamping = true;   //damping
 controls.dampingFactor = 0.10;   //damping inertia
 controls.enableZoom = true;
 controls.zoomSpeed = 0.25;
@@ -175,13 +177,13 @@ sky.position.y = CUBE_Y_DEFAULT - 2;
 scene.add(sky);
 
 // =================================================
-// =================================================
-
+// =============== Update Function =================
 
 let selected = null;
 let last_mat;
 let time = 0;
 let mode = "Editing Walls";
+let pluckedObject = null;
 
 // game logic
 var update = function() {
@@ -190,7 +192,7 @@ var update = function() {
     controls.update();
     twater.rotation.x = time + 0.1;
     water.rotation.x = time;
-    time += 0.0001;
+    time += 0.0005;
 
     // find intersected object
     let vector = new THREE.Vector3(mouse.x, mouse.y, 1);
@@ -203,16 +205,21 @@ var update = function() {
             handleEditingWalls(intersects);
             break;
         case "Moving Pirate":
+            handleMovingPirate(intersects);
             break;
         case "Moving Treasure":
+            handleMovingTreasure(intersects);
             break;
     }
 }
 
+
+// =================================================
+// ================= Walls Mode ====================
+
 function handleEditingWalls(intersects) {
     if (intersects.length > 0) {
         // make the cursor a pointer if the object is interactable
-        console.log(intersects)
         if (intersects[0].geometry == box_geometry || intersects[0].geometry == pirate_geometry || intersects[0].geometry == treasure_geometry) {
             $('html,body').css('cursor', 'pointer');
         } else {
@@ -250,7 +257,7 @@ function handleEditingWalls(intersects) {
                     selected.material = dark_red_mat;
                 }
             } else if (selected.geometry == pirate_geometry || selected.geometry == treasure_geometry) {
-                selected.material = dark_red_mat;
+                selected.material = teal_mat;
             }
             if (selected.position.y == CUBE_Y_DEFAULT) {
                 selected.position.y = CUBE_Y_SELECTED;
@@ -262,6 +269,7 @@ function handleEditingWalls(intersects) {
         }
     } else {
         // make the cursor the user default
+        $('html,body').css('cursor', 'default');
 
         // revert changes to old selected cube
         if (selected != null) {
@@ -277,6 +285,45 @@ function handleEditingWalls(intersects) {
         selected = null;
     }
 }
+
+// =================================================
+// =============== Moving Pirate =================
+
+function handleMovingPirate(intersects) {
+    if (intersects.length > 0) {
+        // hilight cube under pirate blue
+        if (intersects[0].geometry == box_geometry) {
+            $('html,body').css('cursor', 'pointer');
+        } else {
+            $('html,body').css('cursor', 'default');
+        }
+
+        // find new selected object
+        if (intersects[0] == pluckedObject && intersects.length > 1) {
+            selected = intersects[1];
+        } else {
+            selected = intersects[0];
+        }
+
+        // if selected object is a cube snap pirate to tile above cube
+        if (selected.geometry == box_geometry) {
+            // make pluckedObject's position the same as selected's
+            pluckedObject.position.x = selected.position.x;
+            pluckedObject.position.z = selected.position.z;
+
+            selected.material = teal_mat;
+        }
+    }
+}
+
+
+// =================================================
+// =============== Moving Treasure =================
+
+function handleMovingTreasure(intersects) {
+
+}
+
 
 // ==================================================
 // =============== MouseMove Event ==================
@@ -314,6 +361,7 @@ function onDocumentClick(event) {
     }
     console.log(gameState);
 }
+
 
 function clickCube(cube_index) {
     switch(gameState[cube_index]) {
@@ -355,12 +403,18 @@ function clickCube(cube_index) {
 
 function clickPirate(cube_index) {
     mode = "Moving Pirate";
+    console.log(mode);
+
     selected.position.y = AGENT_PLUCKED;
+    pluckedObject = selected;
 }
 
 function clickTreasure(cube_index) {
     mode = "Moving Treasure";
+    console.log(mode);
+
     selected.position.y = AGENT_PLUCKED;
+    pluckedObject = selected;
 }
 
 

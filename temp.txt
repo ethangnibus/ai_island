@@ -1,0 +1,48 @@
+// var update = function() {
+//     // find mouse positiion
+//     var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+//     vector.unproject(camera);
+//     var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+//     var intersects = ray.intersectObjects(cubes, true);
+
+//     if (intersects.length > 0) {
+//         // make the cursor a pointer
+//         $('html,body').css('cursor', 'pointer');
+
+//         if (selected_cube != null) {
+//             var cube_index = (selected_cube.position.x + (board_width/2)) + (selected_cube.position.z - (board_height/2)) * -board_width;
+//             console.log(cube_index)
+//         }
+
+//         // If the selected cube is different than the last one
+//         if (intersects[0].object != selected_cube) {
+//             // revert changes to old selected_cube if it has not been clicked
+//             if (selected_cube != null && selected_cube.position.y != CUBE_Y_CLICKED) {
+//                 var cube_index = (selected_cube.position.x + (board_width/2)) + (selected_cube.position.z - (board_height/2)) * -board_width;
+                
+//                 selected_cube.material = last_material;
+//                 selected_cube.position.y = CUBE_Y_DEFAULT;
+//             }
+
+//             // store properties of new selected_cube
+//             selected_cube = intersects[0].object;
+
+//             // make changes to new selected_cube
+//             selected_cube.material = red_mat;
+//             selected_cube.position.y = CUBE_Y_SELECTED;
+//         }
+//     } else {
+//         // make the cursor the user default
+//         $('html,body').css('cursor', 'default');
+
+//         // revert changes to old selected cube
+//         if (selected_cube != null && selected_cube.position.y != CUBE_Y_CLICKED) {
+//             var cube_index = (selected_cube.position.x + (board_width/2)) + (selected_cube.position.z - (board_height/2)) * -board_width;
+//             selected_cube.material = last_material;
+//             selected_cube.position.y = CUBE_Y_DEFAULT;
+//         }
+
+//         // set selected_cube to null
+//         selected_cube = null;
+//     }
+// }
