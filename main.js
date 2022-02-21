@@ -8,8 +8,12 @@ const board_width = 10;
 const board_height = 10;
 const cube_width = 1;
 
+let intro_text;
+let intro_text_rising = false;
+
 const cylinder_geometry = new THREE.CylinderGeometry(board_width * 0.8, board_width, 5, 32 );
 const box_geometry = new THREE.BoxGeometry(cube_width, 3, cube_width);
+const pole_geometry = new THREE.BoxGeometry(0.1, 100, 0.1);
 const water_geometry = new THREE.SphereGeometry(board_width * 60, 20, 20);
 const waves_geometry = new THREE.SphereGeometry(board_width * 60, 21, 21);
 const skybox_geometry = new THREE.CylinderGeometry(board_width * 47, board_width * 47, 1000, 32 );
@@ -48,6 +52,33 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer(antialias = true);
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 const raycaster = new THREE.Raycaster();
+
+
+const fontLoader = new THREE.FontLoader();
+fontLoader.load("fonts/TimesNewRoman.json",function(font){ 
+    const text_geometry = new THREE.TextGeometry( 'Welcome to AI Island!', {
+        font: font,
+        size: 1.5,
+        height: 1,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 0.005,
+        bevelSize: 0.005,
+        bevelOffset: 0,
+        bevelSegments: 5
+    } );
+
+    var  text = new THREE.Mesh(text_geometry , lwall_mat);
+
+    // positioning font
+    text.position.x = -9.5;
+    text.position.z = -0.5;
+    text.position.y = 6;
+    scene.add(text);
+
+    intro_text = text;
+
+})
 
 
 // =================================================
@@ -143,6 +174,7 @@ gameState[board_width * board_width - 1] = 3
 
 
 
+
 // =================================================
 // ============ Initialize Decorations =============
 
@@ -193,6 +225,18 @@ var update = function() {
     twater.rotation.x = time + 0.1;
     water.rotation.x = time;
     time += 0.0005;
+
+    // make text rise
+    if (intro_text_rising) {
+        intro_text.position.y += 0.1;
+        
+        if (intro_text.position.y > 100) {
+            intro_text.geometry.dispose();
+            intro_text.material.dispose();
+            scene.remove(intro_text);
+            intro_text_rising = false;
+        }
+    }
 
     // find intersected object
     let vector = new THREE.Vector3(mouse.x, mouse.y, 1);
@@ -345,7 +389,10 @@ function onDocumentMouseMove ( event ) {
 
 function onDocumentClick(event) {
     event.preventDefault();
-    if (controls.autoRotate) controls.autoRotate = false;
+    if (controls.autoRotate) {
+        controls.autoRotate = false;
+        intro_text_rising = true;
+    }
 
     let cube_index = (selected.position.x + (board_width/2) - (cube_width/2)) + (selected.position.z - (board_height/2) + (cube_width/2)) * -board_width;
     switch (selected.geometry) {
@@ -433,3 +480,29 @@ var GameLoop = function() {
 };
 
 GameLoop();
+
+
+
+
+
+function debug_grid() {
+    let gridsize = 100
+    for (i = -gridsize; i <= gridsize; i += 1) {
+        // Set up pole
+        let pole;
+
+        if (i % 2) {
+            pole = new THREE.Mesh(pole_geometry, light_red_mat);
+        } else {
+            pole = new THREE.Mesh(pole_geometry, dark_red_mat);
+        }
+
+        pole.position.x = i;
+        pole.position.z = 0;
+        pole.position.y = 0;
+
+        scene.add(pole);
+    }
+}
+
+//debug_grid()
